@@ -33,6 +33,7 @@ def main(ctx: typer.Context):
     try:
         geely_app = Application(backend='uia').connect(title='WEB VMS - ООО «Бизнес Кар М» - Москва')
         geely_window = geely_app.top_window()
+        geely_window.set_focus()
         ctx.obj = geely_window
     except ElementNotFoundError as no_app_err:
         typer.secho(

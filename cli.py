@@ -33,20 +33,19 @@ def main(ctx: typer.Context):
     try:
         geely_app = Application(backend='uia').connect(title='WEB VMS - ООО «Бизнес Кар М» - Москва')
         geely_window = geely_app.top_window()
+        ctx.obj = geely_window
     except ElementNotFoundError as no_app_err:
         typer.secho(
             'Ошибка: клиентское приложение 1С WEB VMS (Geely) не запущено. Запустите приложение и повторите попытку',
             fg=colors.RED
         )
         raise typer.Exit(1) from no_app_err
-    except ElementAmbiguousError as many_window_error:
+    except ElementAmbiguousError as many_window_err:
         typer.secho(
             'Ошибка: запущено несколько окон 1С WEB VMS (Geely). Оставьте только одно активное окно и повторите попытку',
             fg=colors.RED
         )
-        raise typer.Exit(1) from many_window_error
-
-
+        raise typer.Exit(1) from many_window_err
 
 
 @app.command('works')

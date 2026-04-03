@@ -42,7 +42,9 @@ def main(ctx: typer.Context):
     
     try:
         geely_app = Application(backend='uia').connect(title=OneCWebWMS.MAIN_WINDOW_TITLE)
-        geely_window: WindowSpecification = geely_app.top_window()
+        # top_window() может вернуть не главное окно (всплывающие окна имеют более высокий Z-order),
+        # поэтому используем поиск по title
+        geely_window: WindowSpecification = geely_app.window(title=OneCWebWMS.MAIN_WINDOW_TITLE)
 
         claim_tab = geely_window.child_window(title_re=OneCWebWMS.CLAIM_CREATE_TAB_PATTERN, control_type='Pane')
         

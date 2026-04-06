@@ -1,11 +1,14 @@
 import os 
 import sys
+import time 
+import logging 
 
 import typer 
 from typer import colors
 from pywinauto import Application, ElementNotFoundError, ElementAmbiguousError, WindowSpecification
 
 from enums import OneCWebWMS
+from utils import error_exit
 
 
 app = typer.Typer(
@@ -34,11 +37,7 @@ def main(ctx: typer.Context):
         • В приложении не открыта вкладка "{OneCWebWMS.CLAIM_CREATE_TAB_TITLE}"
     """ 
     if not sys.platform.startswith('win') or os.name != 'nt':
-        typer.secho(
-            'Ошибка: Утилита работает только на Windows',
-            fg=colors.RED
-        )
-        raise typer.Exit(1)
+        error_exit(msg='Ошибка: Утилита работает только на Windows')
     
     try:
         geely_app = Application(backend='uia').connect(title=OneCWebWMS.MAIN_WINDOW_TITLE)
@@ -49,26 +48,22 @@ def main(ctx: typer.Context):
         claim_tab = geely_window.child_window(title_re=OneCWebWMS.CLAIM_CREATE_TAB_PATTERN, control_type='Pane')
         
         if not claim_tab.exists():
-            typer.secho(
-                f'Ошибка: Не открыта вкладка "{OneCWebWMS.CLAIM_CREATE_TAB_TITLE}". Откройте вкладку создания рекламации и повторите попытку',
-                fg=colors.RED
+            error_exit(
+                msg=f'Ошибка: Не открыта вкладка "{OneCWebWMS.CLAIM_CREATE_TAB_TITLE}". Откройте вкладку создания рекламации и повторите попытку'
             )
-            raise typer.Exit(1)
 
         geely_window.set_focus()
         ctx.obj = geely_window
     except ElementNotFoundError as no_app_err:
-        typer.secho(
-            f'Ошибка: Клиентское приложение {OneCWebWMS.APP_NAME} не запущено. Запустите приложение и повторите попытку',
-            fg=colors.RED
+        error_exit(
+            msg=f'Ошибка: Клиентское приложение {OneCWebWMS.APP_NAME} не запущено. Запустите приложение и повторите попытку',
+            original_exception=no_app_err
         )
-        raise typer.Exit(1) from no_app_err
     except ElementAmbiguousError as many_window_err:
-        typer.secho(
-            f'Ошибка: Запущено несколько окон {OneCWebWMS.APP_NAME}. Оставьте только одно активное окно и повторите попытку',
-            fg=colors.RED
+        error_exit(
+            msg=f'Ошибка: Запущено несколько окон {OneCWebWMS.APP_NAME}. Оставьте только одно активное окно и повторите попытку',
+            original_exception=many_window_err
         )
-        raise typer.Exit(1) from many_window_err
 
 
 @app.command('works')
@@ -80,5 +75,34 @@ def works(
     typer.secho("✅ Утилита работает, подключение к Geely установлено", fg=colors.GREEN)
 
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    filename='app.log',
+    encoding='utf-8',
+    format='[{asctime}] #{levelname:8} {filename}:{lineno} - {name} - {message}',
+    style='{'
+)
+
+logger = logging.getLogger(__name__)
+
 if __name__ == '__main__':
-    app()
+    logging.info('Запуск приложения onec-claim-geely-util')
+    logging.info(f'Аргументы командной строки: {" ".join(sys.argv)}')
+
+    start = time.perf_counter()
+
+    try:
+        app()
+    except SystemExit as err:
+        code = err.code if err.code is not None else 0 
+        end = time.perf_counter() - start 
+        running_time_msg = f'Время работы: {end:.2f}'
+
+        if len(sys.argv) == 1 and code == 2:
+            logging.info('Вывод справки о приложении')
+        elif code == 0:
+            logging.info(f'Приложение завершилось успешно. {running_time_msg}')
+        else:
+            logging.error(f'Приложение завершилось с ошибкой, коды выхода: {err.code}. {running_time_msg}')
+
+        raise err 

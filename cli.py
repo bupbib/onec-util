@@ -133,8 +133,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 if __name__ == '__main__':
-    logging.info('Запуск приложения onec-claim-geely-util')
-    logging.info(f'Аргументы командной строки: {" ".join(sys.argv)}')
+    logger.info('Запуск приложения onec-claim-geely-util')
+    logger.info(f'Аргументы командной строки: {" ".join(sys.argv)}')
 
     start = time.perf_counter()
 
@@ -146,10 +146,10 @@ if __name__ == '__main__':
         running_time_msg = f'Время работы: {end:.2f}'
 
         if len(sys.argv) == 1 and code == 2:
-            logging.info('Вывод справки о приложении')
+            logger.info('Вывод справки о приложении')
         elif code == 0:
-            logging.info(f'Приложение завершилось успешно. {running_time_msg}')
+            logger.info(f'Приложение завершилось успешно. {running_time_msg}')
         else:
-            logging.error(f'Приложение завершилось с ошибкой, коды выхода: {err.code}. {running_time_msg}')
+            logger.error(f'Приложение завершилось с ошибкой, коды выхода: {err.code}. {running_time_msg}')
 
         raise err 

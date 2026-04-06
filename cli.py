@@ -3,16 +3,17 @@ import sys
 import time 
 import logging 
 
+import keyboard
 import typer 
 from typer import colors
-from pywinauto import Application, ElementNotFoundError, ElementAmbiguousError, WindowSpecification
+from pywinauto import Application, ElementNotFoundError, ElementAmbiguousError, WindowSpecification 
 
-from enums import OneCWebWMS
+from enums import OneCWebWMS, MyApp
 from utils import error_exit
 
 
 app = typer.Typer(
-    name='onec-claim-geely-util',
+    name=MyApp.NAME,
     help=f"""Утилита для заполнения данных рекламации в клиентском приложении {OneCWebWMS.APP_NAME}\n
             Требования:
                 • Windows OS
@@ -54,6 +55,7 @@ def main(ctx: typer.Context):
 
         geely_window.set_focus()
         ctx.obj = geely_window
+        logger.info(f'Успешное подключение к {OneCWebWMS.APP_NAME}')
     except ElementNotFoundError as no_app_err:
         error_exit(
             msg=f'Ошибка: Клиентское приложение {OneCWebWMS.APP_NAME} не запущено. Запустите приложение и повторите попытку',
@@ -66,13 +68,58 @@ def main(ctx: typer.Context):
         )
 
 
-@app.command('works')
-def works(
-        ctx: typer.Context,
+@app.command(MyApp.ADD_JOBS)
+def add_jobs(
+    ctx: typer.Context,
+    jobs: list[str] = typer.Argument(..., help='Коды работ через пробел')
 ):
-    """Тестовая команда"""
-    window: WindowSpecification = ctx.obj
-    typer.secho("✅ Утилита работает, подключение к Geely установлено", fg=colors.GREEN)
+    geely_window: WindowSpecification = ctx.obj
+    not_found_jobs = []
+
+    logger.info(f'Выполнение команды {MyApp.ADD_JOBS}, количество кодов: {len(jobs)}')
+    
+    geely_window.child_window(title_re='Работы', control_type='TabItem').click_input()
+    add_job_btn = geely_window.child_window(title='Добавить', control_type='Button').wrapper_object()
+
+    for job in jobs:
+        add_job_btn.click_input() 
+
+        table = geely_window['Отбор по модели и деталиTable']
+        table.set_focus()
+        table.type_keys('^f')
+        
+        # Особенность 1С (UIA):
+        # print_control_identifiers() нестабилен (падает на None),
+        # а "Где искать" не определяется как ComboBox (идёт как Text),
+        # поэтому поиск через descendants(Text) по label
+        for item in geely_window.wrapper_object().descendants(control_type='Text'):
+            item_text = item.window_text()
+
+            if item_text in ('&Где искать:', '&Что искать:'):
+                item.click_input()
+                item.type_keys(
+                    ('Работа' if 'Где' in item_text else job) + '{TAB}'
+                )
+        
+        # Если появляется надпись "Показать все" значит код работы не найден в номенклатуре
+        show_all = geely_window.wrapper_object().descendants(control_type='Text', title='Показать все')
+        if show_all:
+            not_found_jobs.append(job)
+            logger.debug(f'Код работы {job} не был найден в номенклатуре')
+        else:
+            print('Надписи нет')
+
+        # send_keys('^{ENTER}')
+
+        break 
+
+
+
+@app.command(MyApp.ADD_DETAILS)
+def add_details(
+    ctx: typer.Context
+):
+    pass 
 
 
 logging.basicConfig(

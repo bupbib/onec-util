@@ -27,3 +27,11 @@ def error_exit(
         raise typer.Exit(exit_code)
     else:
         raise typer.Exit(exit_code) from original_exception
+
+
+def print_log(msg: str, color: str = colors.GREEN) -> None:
+    """
+    Выводит сообщение в консоль и пишет в лог
+    """
+    typer.secho(msg, fg=color)
+    logger.info(msg)

@@ -1,15 +1,16 @@
-import os 
+import os
 import sys
 import time 
 import logging 
+import warnings
 
-import keyboard
 import typer 
 from typer import colors
 from pywinauto import Application, ElementNotFoundError, ElementAmbiguousError, WindowSpecification 
+from pywinauto.keyboard import send_keys
 
 from enums import OneCWebWMS, MyApp
-from utils import error_exit
+from utils import error_exit, print_log
 
 
 app = typer.Typer(
@@ -73,46 +74,88 @@ def add_jobs(
     ctx: typer.Context,
     jobs: list[str] = typer.Argument(..., help='Коды работ через пробел')
 ):
-    geely_window: WindowSpecification = ctx.obj
     not_found_jobs = []
-
-    logger.info(f'Выполнение команды {MyApp.ADD_JOBS}, количество кодов: {len(jobs)}')
+    total_jobs = len(jobs)
+    geely_window: WindowSpecification = ctx.obj
+    
+    logger.info(f'Выполнение команды {MyApp.ADD_JOBS}, количество кодов: {total_jobs}')
     
     geely_window.child_window(title_re='Работы', control_type='TabItem').click_input()
     add_job_btn = geely_window.child_window(title='Добавить', control_type='Button').wrapper_object()
+    
+    # Флаг: нужно ли открывать вкладку заново
+    need_open_tab = True 
 
-    for job in jobs:
-        add_job_btn.click_input() 
+    for idx, job in enumerate(jobs, 1):
+        if need_open_tab:
+            add_job_btn.click_input() 
 
-        table = geely_window['Отбор по модели и деталиTable']
-        table.set_focus()
-        table.type_keys('^f')
-        
-        # Особенность 1С (UIA):
-        # print_control_identifiers() нестабилен (падает на None),
-        # а "Где искать" не определяется как ComboBox (идёт как Text),
-        # поэтому поиск через descendants(Text) по label
-        for item in geely_window.wrapper_object().descendants(control_type='Text'):
-            item_text = item.window_text()
+        # Иногда окно поиска не появляется с первого раза (задержка 1С, фокус, глюк UIA).
+        # Повторяем Ctrl+F в цикле, пока не найдём поля "Где искать:" / "Что искать:".
+        search_dialog_found = False 
+        while not search_dialog_found:
+            nomenclature_table = geely_window['Отбор по модели и деталиTable'].wrapper_object()
+            nomenclature_table.set_focus()
+            time.sleep(0.5)
+            nomenclature_table.type_keys('%f')
 
-            if item_text in ('&Где искать:', '&Что искать:'):
-                item.click_input()
-                item.type_keys(
-                    ('Работа' if 'Где' in item_text else job) + '{TAB}'
-                )
+            # Особенность 1С (UIA):
+            # print_control_identifiers() нестабилен (падает на None),
+            # а "Где искать" не определяется как ComboBox (идёт как Text),
+            # поэтому поиск через descendants(Text) по label
+            for item in geely_window.wrapper_object().descendants(control_type='Text'):
+                item_text = item.window_text()
+
+                if item_text in ('&Где искать:', '&Что искать:'):
+                    search_dialog_found = True 
+
+                    item.click_input()
+                    item.type_keys(
+                        ('Работа' if 'Где' in item_text else job) + '{TAB}'
+                    )
         
         # Если появляется надпись "Показать все" значит код работы не найден в номенклатуре
         show_all = geely_window.wrapper_object().descendants(control_type='Text', title='Показать все')
         if show_all:
             not_found_jobs.append(job)
             logger.debug(f'Код работы {job} не был найден в номенклатуре')
+
+            # Если не нашли текущий код и есть еще коды - не закрываем вкладку
+            if idx < total_jobs:
+                need_open_tab = False
+                send_keys('{ESC 3}', pause=0.2)  # ESC 3 = закрыть только окно поиска, остаться на вкладке
+            else:
+                send_keys('{ESC 4}', pause=0.2)  # ESC 4 = закрыть все (и поиск, и вкладку)
+                send_keys('{DEL}')
         else:
-            print('Надписи нет')
+            need_open_tab = True 
+            send_keys('^{ENTER}')
+            logger.debug(f'Код работы {job} успешно найден в номенклатуре')
 
-        # send_keys('^{ENTER}')
+            for item in nomenclature_table.children():
+                if f'{job} Работа' in item.window_text(): 
+                    item.click_input(double=True)
+    
+    added_jobs_table = geely_window['Дата:Table'].wrapper_object()
+    added_jobs_table.set_focus()
 
-        break 
-
+    # Удаляем пустые строки, если есть
+    for job in added_jobs_table.children():
+        if job.window_text() == ' Наименование работы':
+            job.click_input()
+            job.type_keys('{DEL}')
+    
+    if not not_found_jobs:
+        print_log(msg='Все коды работ успешно добавлены!')
+    elif len(not_found_jobs) == total_jobs:
+        print_log(msg='Ни один код не был найден. Проверьте корректность передаваемых кодов', color=colors.YELLOW)
+    else:
+        found_count = total_jobs - len(not_found_jobs)
+        print_log(
+            msg=f'Частичный успех. Добавлено {found_count} из {total_jobs}. Ненайденные коды: {";".join(not_found_jobs)}',
+            color=colors.YELLOW
+        )
+             
 
 
 @app.command(MyApp.ADD_DETAILS)
@@ -121,18 +164,21 @@ def add_details(
 ):
     pass 
 
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    filename='app.log',
-    encoding='utf-8',
-    format='[{asctime}] #{levelname:8} {filename}:{lineno} - {name} - {message}',
-    style='{'
-)
-
-logger = logging.getLogger(__name__)
-
+ 
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.DEBUG,
+        filename='app.log',
+        encoding='utf-8',
+        format='[{asctime}] #{levelname:8} {filename}:{lineno} - {name} - {message}',
+        style='{'
+    )
+
+    logger = logging.getLogger(__name__)
+    
+    # Некоторые элементы 1С не поддерживают set_focus() через UIA, но это не критично
+    warnings.filterwarnings('ignore', message='The window has not been focused due to COMError') 
+
     logger.info('Запуск приложения onec-claim-geely-util')
     logger.info(f'Аргументы командной строки: {" ".join(sys.argv)}')
 

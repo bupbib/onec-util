@@ -18,3 +18,20 @@ class MyApp(StrEnum):
 
     def __repr__(self) -> str:
         return f"'{self.value}'"
+
+
+class DetailsTableColumns(StrEnum):
+    """Столбцы таблицы деталей в форме рекламации"""
+    ROW_NUMBER = 'N'
+    PART_NUMBER = 'Деталь/Каталожный номер'
+    PART_NAME = 'Наименование детали'
+    UNIT = 'Ед. изм.'
+    UPD_NUMBER = '№ УПД, Реализации'
+    UPD_DATE = 'Дата накладной'
+    CONTRACTOR = 'Контрагент накладной'
+    QUANTITY = 'Количество'
+    PRICE = 'Цена'
+    AMOUNT_WITHOUT_NDS = 'Сумма без НДС'
+    AMOUNT_WITH_NDS = 'Сумма с НДС'
+    MODIFIED_DATE = 'Дата изменения'
+

@@ -10,7 +10,7 @@ from pywinauto import Application, ElementNotFoundError, ElementAmbiguousError, 
 from pywinauto.keyboard import send_keys
 
 from enums import OneCWebWMS, MyApp
-from utils import error_exit, print_log
+from utils import error_exit, print_log, generate_docs
 
 
 app = typer.Typer(
@@ -54,7 +54,6 @@ def main(ctx: typer.Context):
                 msg=f'Ошибка: Не открыта вкладка "{OneCWebWMS.CLAIM_CREATE_TAB_TITLE}". Откройте вкладку создания рекламации и повторите попытку'
             )
 
-        geely_window.set_focus()
         ctx.obj = geely_window
         logger.info(f'Успешное подключение к {OneCWebWMS.APP_NAME}')
     except ElementNotFoundError as no_app_err:
@@ -70,13 +69,19 @@ def main(ctx: typer.Context):
 
 
 @app.command(MyApp.ADD_JOBS)
+@generate_docs(MyApp.ADD_JOBS)
 def add_jobs(
     ctx: typer.Context,
     jobs: list[str] = typer.Argument(..., help='Коды работ через пробел')
 ):
+    """
+    Добавляет коды работ в рекламацию.
+    """
     not_found_jobs = []
     total_jobs = len(jobs)
     geely_window: WindowSpecification = ctx.obj
+
+    geely_window.set_focus()
     
     logger.info(f'Выполнение команды {MyApp.ADD_JOBS}, количество кодов: {total_jobs}')
     
@@ -142,7 +147,6 @@ def add_jobs(
                 send_keys('{ESC 3}', pause=0.2)  # ESC 3 = закрыть только окно поиска, остаться на вкладке
             else:
                 send_keys('{ESC 4}', pause=0.2)  # ESC 4 = закрыть все (и поиск, и вкладку)
-                send_keys('{DEL}')
         else:
             need_open_tab = True 
             send_keys('^{ENTER}')
@@ -174,6 +178,7 @@ def add_jobs(
              
 
 @app.command(MyApp.ADD_DETAILS)
+@generate_docs(MyApp.ADD_DETAILS)
 def add_details(
     ctx: typer.Context
 ):

@@ -6,7 +6,7 @@ import warnings
 
 import typer 
 from typer import colors
-from pywinauto import Application, ElementNotFoundError, ElementAmbiguousError, WindowSpecification 
+from pywinauto import Application, ElementNotFoundError, ElementAmbiguousError, WindowSpecification, mouse 
 from pywinauto.keyboard import send_keys
 
 from enums import OneCWebWMS, MyApp
@@ -90,12 +90,19 @@ def add_jobs(
         if need_open_tab:
             add_job_btn.click_input() 
 
-        # Иногда окно поиска не появляется с первого раза (задержка 1С, фокус, глюк UIA).
-        # Повторяем Ctrl+F в цикле (до 5 раз) в поиске полей "Где искать:" / "Что искать:", иначе добавляем job в not_found_jobs.
+        # set_focus() и клик по центру таблицы нестабильны. 
+        # Клик по первой записи (или по месту для неё) гарантированно переводит фокус.
+        # Повторяем до 5 раз на случай редких подвисаний 1С.
+        # Если после 5 попыток окно поиска не появилось — добавляем job в not_found_jobs.
         search_dialog_found = False 
         for _ in range(5):
             nomenclature_table = geely_window['Отбор по модели и деталиTable'].wrapper_object()
-            nomenclature_table.set_focus()
+            if nomenclature_table.children():
+                nomenclature_table.children()[0].click_input()
+            else:
+                rect = nomenclature_table.rectangle()
+                mouse.click(coords=(rect.left + rect.width() // 2, rect.top + 35))
+
             time.sleep(0.5)
             send_keys('%f')
 

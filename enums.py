@@ -35,3 +35,6 @@ class DetailsTableColumns(StrEnum):
     AMOUNT_WITH_NDS = 'Сумма с НДС'
     MODIFIED_DATE = 'Дата изменения'
 
+    def __repr__(self) -> str:
+        return f"'{self.value}'"
+

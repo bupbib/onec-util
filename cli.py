@@ -91,13 +91,13 @@ def add_jobs(
             add_job_btn.click_input() 
 
         # Иногда окно поиска не появляется с первого раза (задержка 1С, фокус, глюк UIA).
-        # Повторяем Ctrl+F в цикле, пока не найдём поля "Где искать:" / "Что искать:".
+        # Повторяем Ctrl+F в цикле (до 5 раз) в поиске полей "Где искать:" / "Что искать:", иначе добавляем job в not_found_jobs.
         search_dialog_found = False 
-        while not search_dialog_found:
+        for _ in range(5):
             nomenclature_table = geely_window['Отбор по модели и деталиTable'].wrapper_object()
             nomenclature_table.set_focus()
             time.sleep(0.5)
-            nomenclature_table.type_keys('%f')
+            send_keys('%f')
 
             # Особенность 1С (UIA):
             # print_control_identifiers() нестабилен (падает на None),
@@ -113,7 +113,16 @@ def add_jobs(
                     item.type_keys(
                         ('Работа' if 'Где' in item_text else job) + '{TAB}'
                     )
+            
+            if search_dialog_found: break
+        else: 
+            # else выполнится, если не было break 
+            not_found_jobs.append(job)
+            logger.info(f'Не удалось открыть окно поиска для кода работы: {job}')
+            send_keys('{ESC}')
         
+        if not search_dialog_found: continue 
+
         # Если появляется надпись "Показать все" значит код работы не найден в номенклатуре
         show_all = geely_window.wrapper_object().descendants(control_type='Text', title='Показать все')
         if show_all:
@@ -139,8 +148,8 @@ def add_jobs(
     added_jobs_table = geely_window['Дата:Table'].wrapper_object()
     added_jobs_table.set_focus()
 
-    # Удаляем пустые строки, если есть
-    for job in added_jobs_table.children():
+    # Удаляем пустые строки снизу вверх, чтобы не смещать индексы остальных элементов
+    for job in reversed(added_jobs_table.children()):
         if job.window_text() == ' Наименование работы':
             job.click_input()
             job.type_keys('{DEL}')
@@ -156,7 +165,6 @@ def add_jobs(
             color=colors.YELLOW
         )
              
-
 
 @app.command(MyApp.ADD_DETAILS)
 def add_details(
@@ -175,7 +183,7 @@ if __name__ == '__main__':
     )
 
     logger = logging.getLogger(__name__)
-    
+
     # Некоторые элементы 1С не поддерживают set_focus() через UIA, но это не критично
     warnings.filterwarnings('ignore', message='The window has not been focused due to COMError') 
 

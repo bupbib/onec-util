@@ -3,14 +3,18 @@ import sys
 import time 
 import logging 
 import warnings
+import json 
+from pathlib import Path
 
 import typer 
 from typer import colors
 from pywinauto import Application, ElementNotFoundError, ElementAmbiguousError, WindowSpecification, mouse 
 from pywinauto.keyboard import send_keys
+from pydantic import ValidationError
 
-from enums import OneCWebWMS, MyApp
-from utils import error_exit, print_log, generate_docs
+from enums import DetailsTableColumns, OneCWebWMS, MyApp
+from utils import error_exit, print_log, generate_docs, extract_details_row
+from models import DetailItem
 
 
 app = typer.Typer(
@@ -178,11 +182,72 @@ def add_jobs(
              
 
 @app.command(MyApp.ADD_DETAILS)
-@generate_docs(MyApp.ADD_DETAILS)
+# @generate_docs(MyApp.ADD_DETAILS)
 def add_details(
-    ctx: typer.Context
+    ctx: typer.Context,
+    file_path: Path = typer.Argument(
+        ..., 
+        help='Путь к JSON файлу с деталями', 
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True
+    )
 ):
-    pass 
+    """
+    Добавить детали в рекламацию
+    """  
+    with open(file_path, encoding='utf-8') as file:
+        try:
+            data = json.load(file)
+        except json.JSONDecodeError as json_err:
+            error_exit(
+                msg='Ошибка: файл не является валидным JSON',
+                original_exception=json_err
+            )
+    
+    invalid_details = []
+    not_found_details = []
+    total_details = len(data)
+    geely_window: WindowSpecification = ctx.obj 
+
+    geely_window.set_focus()
+
+    logger.info(f'Выполнение команды {MyApp.ADD_DETAILS}, количество кодов: {total_details}')
+
+    geely_window.child_window(title_re='Детали', control_type='TabItem').click_input()
+    add_detail_btn = geely_window.child_window(title='Добавить', control_type='Button').wrapper_object()
+    added_details_table = geely_window['Дата:Table']
+
+    # geely_window.print_control_identifiers()
+    valid_count = 1
+    for detail_dict in data:
+        try:
+            detail_item = DetailItem.model_validate(detail_dict)
+        except ValidationError:
+            logger.debug(f'Не удалось провалидировать деталь: {detail_dict}')
+            invalid_details.append(detail_dict)
+            continue 
+    
+        add_detail_btn.click_input()
+
+        row = extract_details_row(
+            table_row_elements=added_details_table.wrapper_object().children(), 
+            row_number=valid_count
+        )
+
+        row[DetailsTableColumns.PART_NUMBER].type_keys('{F4}')
+        # geely_window.print_control_identifiers()
+
+        # Если появляется надпись "Показать все" значит номер детали не найден в номенклатуре
+        # show_all = geely_window.wrapper_object().descendants(control_type='Text', title='Показать все')
+        # if show_all:
+
+        
+        break 
+
+
+        
 
  
 if __name__ == '__main__':

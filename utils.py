@@ -3,6 +3,8 @@ import logging
 import typer 
 from typer import colors 
 
+from enums import MyApp
+from user_docs import LEXICON
 
 logger = logging.getLogger(__name__)
 
@@ -35,3 +37,12 @@ def print_log(msg: str, color: str = colors.GREEN) -> None:
     """
     typer.secho(msg, fg=color)
     logger.info(msg)
+
+
+def generate_docs(cmd: MyApp):
+    """Декоратор для установки документации из LEXICON"""
+    def decorator(func):
+        func.__doc__ = LEXICON[cmd]
+        return func
+
+    return decorator

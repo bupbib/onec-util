@@ -69,6 +69,7 @@ def extract_details_row(table_row_elements: list[UIAWrapper], row_number: int) -
         dict: Словарь, где ключ — название столбца (из DetailsTableColumns), 
             значение — UIAWrapper элемент ячейки (для дальнейшего клика или получения текста)
     """
+    idx = 0
     row_dict = {}
 
     for idx, item in enumerate(table_row_elements):

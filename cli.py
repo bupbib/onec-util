@@ -229,6 +229,10 @@ def add_details(
     
         send_keys('^{ENTER}')
 
+        # Используем children() вместо child_window():
+        # 1С при отсутствии детали генерирует ~80 пустых Custom-элементов, которые уже попадают в children().
+        # child_window() в таком случае значительно медленнее (каждый вызов делает полный обход UIA-дерева).
+        # children() получает элементы один раз, без повторных поисков, поэтому это самый быстрый вариант здесь.
         nomenclature_table = geely_window['№ производителя:Table'].wrapper_object()
         first_cell = nomenclature_table.children()[0]
 

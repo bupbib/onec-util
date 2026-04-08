@@ -230,25 +230,24 @@ def add_details(
         send_keys('^{ENTER}')
 
         nomenclature_table = geely_window['№ производителя:Table'].wrapper_object()
-        for item in nomenclature_table.children():
-            if item.window_text() == f'{detail_item.part_number} Артикул':
-                item.click_input(double=True)
-                need_open_tab = True 
-                valid_count += 1
-                logger.debug(f'Деталь {detail_dict} была успешно найдена в номенклатуре')
+        first_cell = nomenclature_table.children()[0]
 
-                row[DetailsTableColumns.QUANTITY].click_input(double=True)
-                row[DetailsTableColumns.QUANTITY].type_keys('^a{DEL}')
-                row[DetailsTableColumns.QUANTITY].type_keys(detail_item.quantity)
+        if first_cell.window_text() == f'{detail_item.part_number} Артикул':
+            first_cell.click_input(double=True)
+            need_open_tab = True 
+            valid_count += 1
+            logger.debug(f'Деталь {detail_dict} была успешно найдена в номенклатуре')
 
-                row[DetailsTableColumns.UPD_NUMBER].click_input(double=True)
-                row[DetailsTableColumns.UPD_NUMBER].type_keys(detail_item.upd)
-                row[DetailsTableColumns.UPD_NUMBER].type_keys('{ENTER}')
+            row[DetailsTableColumns.QUANTITY].click_input(double=True)
+            row[DetailsTableColumns.QUANTITY].type_keys('^a{DEL}')
+            row[DetailsTableColumns.QUANTITY].type_keys(detail_item.quantity)
 
-                if geely_window.child_window(title='Накладные по данной позиции не найдены', control_type='Text').exists():
-                    send_keys('{ENTER}')
-                
-                break 
+            row[DetailsTableColumns.UPD_NUMBER].click_input(double=True)
+            row[DetailsTableColumns.UPD_NUMBER].type_keys(detail_item.upd)
+            row[DetailsTableColumns.UPD_NUMBER].type_keys('{ENTER}')
+
+            if geely_window.child_window(title='Накладные по данной позиции не найдены', control_type='Text').exists():
+                send_keys('{ENTER}')
         else:
             if idx < total_details:
                 need_open_tab = False 
@@ -273,14 +272,14 @@ def add_details(
     else:
         found_count = total_details - len(not_found_details) - len(invalid_details)
         report = {'not_found': not_found_details, 'invalid': invalid_details}
-        
+
         with open('details_report.json', 'w', encoding='utf-8') as file:
             json.dump(report, file, ensure_ascii=False, indent=4)
 
         print_log(
-            msg=f'Частичный успех. Добавлено {found_count} из {total_details}\n'
-                f'Не найдены: {len(not_found_details)}\n'
-                f'Ошибки: {len(invalid_details)}\n'
+            msg=f'Частичный успех. Добавлено {found_count} из {total_details} '
+                f'Не найдены: {len(not_found_details)} '
+                f'Ошибки: {len(invalid_details)} '
                 f'Подробности сохранены в report.json',
             color=colors.YELLOW
         )

@@ -13,7 +13,7 @@ from pywinauto.keyboard import send_keys
 from pydantic import ValidationError
 
 from enums import DetailsTableColumns, OneCWebWMS, MyApp
-from utils import error_exit, print_log, generate_docs, extract_details_row
+from utils import error_exit, print_log, generate_docs, extract_details_row, perform_search_with_retry
 from models import DetailItem
 
 
@@ -96,48 +96,20 @@ def add_jobs(
     need_open_tab = True 
 
     for idx, job in enumerate(jobs, 1):
-        if need_open_tab:
-            add_job_btn.click_input() 
+        if need_open_tab: add_job_btn.click_input() 
 
-        # set_focus() и клик по центру таблицы нестабильны. 
-        # Клик по первой записи (или по месту для неё) гарантированно переводит фокус.
-        # Повторяем до 5 раз на случай редких подвисаний 1С.
-        # Если после 5 попыток окно поиска не появилось — добавляем job в not_found_jobs.
-        search_dialog_found = False 
-        for _ in range(5):
-            nomenclature_table = geely_window['Отбор по модели и деталиTable'].wrapper_object()
-            if nomenclature_table.children():
-                nomenclature_table.children()[0].click_input()
-            else:
-                rect = nomenclature_table.rectangle()
-                mouse.click(coords=(rect.left + rect.width() // 2, rect.top + 35))
-
-            time.sleep(0.5)
-            send_keys('%f')
-
-            # Особенность 1С (UIA):
-            # print_control_identifiers() нестабилен (падает на None),
-            # а "Где искать" не определяется как ComboBox (идёт как Text),
-            # поэтому поиск через descendants(Text) по label
-            for item in geely_window.wrapper_object().descendants(control_type='Text'):
-                item_text = item.window_text()
-
-                if item_text in ('&Где искать:', '&Что искать:'):
-                    search_dialog_found = True 
-
-                    item.click_input()
-                    item.type_keys(
-                        ('Работа' if 'Где' in item_text else job) + '{TAB}'
-                    )
-            
-            if search_dialog_found: break
-        else: 
-            # else выполнится, если не было break 
+        search_dialog_found = perform_search_with_retry(
+            window=geely_window,
+            search_type='job',
+            where_text='Работа',
+            what_text=job
+        )
+        
+        if not search_dialog_found: 
             not_found_jobs.append(job)
             logger.info(f'Не удалось открыть окно поиска для кода работы: {job}')
             send_keys('{ESC}')
-        
-        if not search_dialog_found: continue 
+            continue 
 
         # Если появляется надпись "Показать все" значит код работы не найден в номенклатуре
         show_all = geely_window.wrapper_object().descendants(control_type='Text', title='Показать все')
@@ -155,6 +127,8 @@ def add_jobs(
             need_open_tab = True 
             send_keys('^{ENTER}')
             logger.debug(f'Код работы {job} успешно найден в номенклатуре')
+
+            nomenclature_table = geely_window['Отбор по модели и деталиTable'].wrapper_object()
 
             for item in nomenclature_table.children():
                 if f'{job} Работа' in item.window_text(): 
@@ -219,8 +193,8 @@ def add_details(
     add_detail_btn = geely_window.child_window(title='Добавить', control_type='Button').wrapper_object()
     added_details_table = geely_window['Дата:Table']
 
-    # geely_window.print_control_identifiers()
     valid_count = 1
+    need_open_tab = True 
     for detail_dict in data:
         try:
             detail_item = DetailItem.model_validate(detail_dict)
@@ -228,7 +202,7 @@ def add_details(
             logger.debug(f'Не удалось провалидировать деталь: {detail_dict}')
             invalid_details.append(detail_dict)
             continue 
-    
+        
         add_detail_btn.click_input()
 
         row = extract_details_row(
@@ -237,8 +211,20 @@ def add_details(
         )
 
         row[DetailsTableColumns.PART_NUMBER].type_keys('{F4}')
-        # geely_window.print_control_identifiers()
-
+        
+        search_dialog_found = perform_search_with_retry(
+            window=geely_window,
+            search_type='detail',
+            where_text='Артикул',
+            what_text=detail_item.part_number
+        )
+        
+        if not search_dialog_found:
+            not_found_details.append(detail_dict)
+            logger.info(f'Не удалось открыть окно поиска для детали: {detail_dict}')
+            send_keys('{ESC}')
+            continue  
+        
         # Если появляется надпись "Показать все" значит номер детали не найден в номенклатуре
         # show_all = geely_window.wrapper_object().descendants(control_type='Text', title='Показать все')
         # if show_all:

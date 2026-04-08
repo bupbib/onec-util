@@ -71,7 +71,7 @@ def extract_details_row(table_row_elements: list[UIAWrapper], row_number: int) -
     """
     row_dict = {}
 
-    for idx, item in enumerate(table_row_elements, 1):
+    for idx, item in enumerate(table_row_elements):
         if item.window_text() == f'{row_number} N':
             break 
     

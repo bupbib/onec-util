@@ -176,7 +176,7 @@ def fill_search_fields(window: WindowSpecification, where_text: str, what_text: 
 
 def delete_empty_rows(table: UIAWrapper, empty_marker: str) -> None:
     """
-    Удаляет строки, у которых первая ячейка содержит указанный маркер пустой строки.
+    Удаляет строки, у которых ячейка содержит указанный маркер пустой строки.
     
     Удаление происходит снизу вверх, чтобы не сбивать индексы.
     

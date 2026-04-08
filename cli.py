@@ -262,7 +262,7 @@ def add_details(
             not_found_details.append(detail_dict)
             
     delete_empty_rows(
-        table=added_details_table,
+        table=added_details_table.wrapper_object(),
         empty_marker=' Наименование детали'
     )   
 

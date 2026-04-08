@@ -13,7 +13,10 @@ from pywinauto.keyboard import send_keys
 from pydantic import ValidationError
 
 from enums import DetailsTableColumns, OneCWebWMS, MyApp
-from utils import error_exit, print_log, generate_docs, extract_details_row, perform_search_with_retry
+from utils import (
+    delete_empty_rows, error_exit, print_log, 
+    generate_docs, extract_details_row, perform_search_with_retry
+)
 from models import DetailItem
 
 
@@ -134,14 +137,10 @@ def add_jobs(
                 if f'{job} Работа' in item.window_text(): 
                     item.click_input(double=True)
     
-    added_jobs_table = geely_window['Дата:Table'].wrapper_object()
-    added_jobs_table.set_focus()
-
-    # Удаляем пустые строки снизу вверх, чтобы не смещать индексы остальных элементов
-    for job in reversed(added_jobs_table.children()):
-        if job.window_text() == ' Наименование работы':
-            job.click_input()
-            job.type_keys('{DEL}')
+    delete_empty_rows(
+        table=geely_window['Дата:Table'].wrapper_object(),
+        empty_marker=' Наименование работы'
+    )
     
     if not not_found_jobs:
         print_log(msg='Все коды работ успешно добавлены!')
@@ -156,7 +155,7 @@ def add_jobs(
              
 
 @app.command(MyApp.ADD_DETAILS)
-# @generate_docs(MyApp.ADD_DETAILS)
+@generate_docs(MyApp.ADD_DETAILS)
 def add_details(
     ctx: typer.Context,
     file_path: Path = typer.Argument(
@@ -193,9 +192,10 @@ def add_details(
     add_detail_btn = geely_window.child_window(title='Добавить', control_type='Button').wrapper_object()
     added_details_table = geely_window['Дата:Table']
 
-    valid_count = 1
+    valid_count = 0
     need_open_tab = True 
-    for detail_dict in data:
+
+    for idx, detail_dict in enumerate(data, 1):
         try:
             detail_item = DetailItem.model_validate(detail_dict)
         except ValidationError:
@@ -203,14 +203,16 @@ def add_details(
             invalid_details.append(detail_dict)
             continue 
         
-        add_detail_btn.click_input()
+        if need_open_tab: add_detail_btn.click_input()
 
         row = extract_details_row(
             table_row_elements=added_details_table.wrapper_object().children(), 
-            row_number=valid_count
+            row_number=(valid_count + 1)
         )
 
-        row[DetailsTableColumns.PART_NUMBER].type_keys('{F4}')
+        if need_open_tab:
+            row[DetailsTableColumns.PART_NUMBER].click_input(double=True)
+            row[DetailsTableColumns.PART_NUMBER].type_keys('{F4}')
         
         search_dialog_found = perform_search_with_retry(
             window=geely_window,
@@ -224,16 +226,64 @@ def add_details(
             logger.info(f'Не удалось открыть окно поиска для детали: {detail_dict}')
             send_keys('{ESC}')
             continue  
-        
-        # Если появляется надпись "Показать все" значит номер детали не найден в номенклатуре
-        # show_all = geely_window.wrapper_object().descendants(control_type='Text', title='Показать все')
-        # if show_all:
+    
+        send_keys('^{ENTER}')
 
-        
-        break 
+        nomenclature_table = geely_window['№ производителя:Table'].wrapper_object()
+        for item in nomenclature_table.children():
+            if item.window_text() == f'{detail_item.part_number} Артикул':
+                item.click_input(double=True)
+                need_open_tab = True 
+                valid_count += 1
+                logger.debug(f'Деталь {detail_dict} была успешно найдена в номенклатуре')
 
+                row[DetailsTableColumns.QUANTITY].click_input(double=True)
+                row[DetailsTableColumns.QUANTITY].type_keys('^a{DEL}')
+                row[DetailsTableColumns.QUANTITY].type_keys(detail_item.quantity)
 
+                row[DetailsTableColumns.UPD_NUMBER].click_input(double=True)
+                row[DetailsTableColumns.UPD_NUMBER].type_keys(detail_item.upd)
+                row[DetailsTableColumns.UPD_NUMBER].type_keys('{ENTER}')
+
+                if geely_window.child_window(title='Накладные по данной позиции не найдены', control_type='Text').exists():
+                    send_keys('{ENTER}')
+                
+                break 
+        else:
+            if idx < total_details:
+                need_open_tab = False 
+            else:
+                send_keys('{ESC}')
+            
+            logger.debug(f'Не удалось найти деталь {detail_dict} в номенклатуре')
+            not_found_details.append(detail_dict)
+            
+    delete_empty_rows(
+        table=added_details_table,
+        empty_marker=' Наименование детали'
+    )   
+
+    if not not_found_details and not invalid_details:
+        print_log(msg='Все детали успешно добавлены!') 
+    if len(not_found_details) + len(invalid_details) == total_details:
+        print_log(
+            msg='Ни одна деталь не была найдена. Проверьте корректность передаваемых деталей', 
+            color=colors.YELLOW
+        )
+    else:
+        found_count = total_details - len(not_found_details) - len(invalid_details)
+        report = {'not_found': not_found_details, 'invalid': invalid_details}
         
+        with open('details_report.json', 'w', encoding='utf-8') as file:
+            json.dump(report, file, ensure_ascii=False, indent=4)
+
+        print_log(
+            msg=f'Частичный успех. Добавлено {found_count} из {total_details}\n'
+                f'Не найдены: {len(not_found_details)}\n'
+                f'Ошибки: {len(invalid_details)}\n'
+                f'Подробности сохранены в report.json',
+            color=colors.YELLOW
+        )
 
  
 if __name__ == '__main__':

@@ -1,8 +1,12 @@
 import logging 
+import time 
+from typing import Literal 
 
 import typer 
 from typer import colors 
+from pywinauto import WindowSpecification, mouse
 from pywinauto.controls.uiawrapper import UIAWrapper
+from pywinauto.keyboard import send_keys
 
 from enums import MyApp, DetailsTableColumns
 from user_docs import LEXICON
@@ -78,3 +82,93 @@ def extract_details_row(table_row_elements: list[UIAWrapper], row_number: int) -
     return row_dict
 
 
+def perform_search_with_retry(
+    window: WindowSpecification,
+    search_type: Literal['job', 'detail'],
+    where_text: str,
+    what_text: str, 
+    max_attempts: int = 5
+) -> bool:
+    """
+    Открывает окно поиска, заполняет поля и повторяет попытку при неудаче.
+    
+    Режимы работы:
+        - 'job':   открывает поиск через Ctrl+F, предварительно кликает по первой записи таблицы
+        - 'detail': открывает поиск через кнопку "Найти..."
+    
+    Args:
+        window: Окно 1С (geely_window)
+        where_text: Текст для поля "Где искать:" (например, "Работа" или "Артикул")
+        what_text: Текст для поля "Что искать:" (код работы или артикул детали)
+        search_type: Тип поиска — 'job' для кодов работ, 'detail' для деталей
+        max_attempts: Количество попыток (по умолчанию 5)
+    
+    Returns:
+        bool: True если удалось открыть окно поиска и заполнить поля, False если нет
+    """
+    for _ in range(max_attempts):
+        if search_type == 'job':
+            # set_focus() и клик по центру таблицы нестабильны. 
+            # Клик по первой записи (или по месту для неё) гарантированно переводит фокус.
+            nomenclature_table = window['Отбор по модели и деталиTable'].wrapper_object()
+            if nomenclature_table.children():
+                nomenclature_table.children()[0].click_input()
+            else:
+                rect = nomenclature_table.rectangle()
+                mouse.click(coords=(rect.left + rect.width() // 2, rect.top + 35))
+
+            time.sleep(0.5)
+            send_keys('%f') 
+        elif search_type == 'detail':
+            window.child_window(title='Найти...', control_type='Button').click_input() 
+        else:
+            return False  
+        
+        time.sleep(0.5)  # время на прогрузку окна
+        
+        if fill_search_fields(window, where_text, what_text):
+            for item in window.wrapper_object().descendants(control_type='Text'):
+                if item.window_text() == 'По точному совпадению':
+                    item.click_input()
+                    break 
+            return True 
+    
+    return False 
+
+
+def fill_search_fields(window: WindowSpecification, where_text: str, what_text: str) -> bool:
+    """
+    Заполняет поля поиска "Где искать:" и "Что искать:" в окне поиска 1С.
+    
+    Открытое окно поиска должно быть активным. Функция находит текстовые поля
+    по их заголовкам и вводит указанные значения, после чего переключается на следующее поле (TAB).
+    
+    Args:
+        window: Окно 1С (обычно geely_window), в котором ищем descendants
+        where_text: Текст для поля "Где искать:" (например, "Работа")
+        what_text: Текст для поля "Что искать:" (например, код работы или детали)
+    
+    Returns:
+        bool: True если оба поля найдены и значения введены, False если хотя бы одно не найдено
+    """
+    where_found = False 
+    what_found = False 
+
+    # Особенность 1С (UIA):
+    # print_control_identifiers() нестабилен (падает на None),
+    # а "Где искать" не определяется как ComboBox (идёт как Text),
+    # поэтому поиск через descendants(Text) по label
+
+    for item in window.wrapper_object().descendants(control_type='Text'):
+        item_text = item.window_text()
+
+        if item_text == '&Где искать:':
+            where_found = True 
+            item.click_input()
+            item.type_keys(where_text + '{TAB}')
+        elif item_text == '&Что искать:':
+            what_found = True 
+            item.click_input()
+            item.type_keys(what_text + '{TAB}')
+    
+    return where_found and what_found

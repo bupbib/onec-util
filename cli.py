@@ -82,7 +82,7 @@ def add_jobs(
     jobs: list[str] = typer.Argument(..., help='Коды работ через пробел')
 ):
     """
-    Добавляет коды работ в рекламацию.
+    Добавить коды работ в рекламацию
     """
     not_found_jobs = []
     total_jobs = len(jobs)
@@ -168,7 +168,7 @@ def add_details(
     )
 ):
     """
-    Добавить детали в рекламацию
+    Добавить детали в рекламацию из JSON файла
     """  
     with open(file_path, encoding='utf-8') as file:
         try:
@@ -281,9 +281,9 @@ def add_details(
             json.dump(report, file, ensure_ascii=False, indent=4)
 
         print_log(
-            msg=f'Частичный успех. Добавлено {found_count} из {total_details} '
-                f'Не найдены: {len(not_found_details)} '
-                f'Ошибки: {len(invalid_details)} '
+            msg=f'Частичный успех. Добавлено {found_count} из {total_details}. '
+                f'Не найдены: {len(not_found_details)}. '
+                f'Ошибки: {len(invalid_details)}. '
                 f'Подробности сохранены в report.json',
             color=colors.YELLOW
         )

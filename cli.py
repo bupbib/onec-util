@@ -170,6 +170,7 @@ def add_details(
     """
     Добавить детали в рекламацию из JSON файла
     """  
+    data = []
     with open(file_path, encoding='utf-8') as file:
         try:
             data = json.load(file)

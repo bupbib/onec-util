@@ -129,13 +129,11 @@ def add_jobs(
         else:
             need_open_tab = True 
             send_keys('^{ENTER}')
-            logger.debug(f'Код работы {job} успешно найден в номенклатуре')
 
             nomenclature_table = geely_window['Отбор по модели и деталиTable'].wrapper_object()
+            nomenclature_table.children()[0].click_input(double=True)  # клик по первой ячейке
 
-            for item in nomenclature_table.children():
-                if f'{job} Работа' in item.window_text(): 
-                    item.click_input(double=True)
+            logger.debug(f'Код работы {job} успешно найден в номенклатуре')
     
     delete_empty_rows(
         table=geely_window['Дата:Table'].wrapper_object(),

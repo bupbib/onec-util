@@ -175,7 +175,7 @@ def fill_search_fields(window: WindowSpecification, where_text: str, what_text: 
     return where_found and what_found
 
 
-def delete_empty_rows(table: UIAWrapper, empty_marker: str) -> None:
+def delete_empty_rows(table: UIAWrapper, empty_marker: str) -> bool:
     """
     Удаляет строки, у которых ячейка содержит указанный маркер пустой строки.
     
@@ -184,10 +184,17 @@ def delete_empty_rows(table: UIAWrapper, empty_marker: str) -> None:
     Args:
         table: Таблица (UIAWrapper)
         empty_marker: Текст-маркер пустой строки (например, ' Наименование работы' или ' Наименование детали')
+    
+    Returns:
+        bool: True, если была удалена хотя бы одна строка, иначе False.
     """
+    delete_flag = False 
     table.set_focus()
 
     for item in reversed(table.children()):
         if item.window_text() == empty_marker:
+            delete_flag = True 
             item.click_input()
             item.type_keys('{DEL}')
+    
+    return delete_flag

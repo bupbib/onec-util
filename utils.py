@@ -109,9 +109,11 @@ def perform_search_with_retry(
     """
     for _ in range(max_attempts):
         if search_type == 'job':
-            # set_focus() и клик по центру таблицы нестабильны. 
-            # Клик по первой записи (или по месту для неё) гарантированно переводит фокус.
+            # set_focus() + клик по первой записи — стабильная комбинация для перевода фокуса.
+            # По отдельности оба метода ненадёжны.
             nomenclature_table = window['Отбор по модели и деталиTable'].wrapper_object()
+            nomenclature_table.set_focus()
+
             if nomenclature_table.children():
                 nomenclature_table.children()[0].click_input()
             else:

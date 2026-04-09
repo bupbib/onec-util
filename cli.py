@@ -299,9 +299,11 @@ def add_details(
 
  
 if __name__ == '__main__':
+    log_file = Path(__file__).parent / 'app.log'
+
     logging.basicConfig(
         level=logging.DEBUG,
-        filename='app.log',
+        filename=str(log_file),
         encoding='utf-8',
         format='[{asctime}] #{levelname:8} {filename}:{lineno} - {name} - {message}',
         style='{'

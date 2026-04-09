@@ -119,7 +119,7 @@ def perform_search_with_retry(
                 mouse.click(coords=(rect.left + rect.width() // 2, rect.top + 35))
 
             time.sleep(0.5)
-            send_keys('%f') 
+            send_keys('^f') 
         elif search_type == 'detail':
             window.child_window(title='Найти...', control_type='Button').click_input() 
         else:

@@ -17,5 +17,8 @@ __pycache__/
 # MyPy
 .mypy_cache/
 
-# 
+# Файл лога
 *.log
+
+# json
+*.json 

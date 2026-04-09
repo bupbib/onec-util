@@ -261,11 +261,19 @@ def add_details(
             
             logger.debug(f'Не удалось найти деталь {detail_dict} в номенклатуре')
             not_found_details.append(detail_dict)
-            
-    delete_empty_rows(
+
+    # Если предпоследняя деталь не была найдена, need_open_tab = False, а последняя деталь - невалидна,
+    # то окно с поиском может остаться
+    if geely_window.child_window(title='Найти...', control_type='Button').exists():
+        send_keys('{ESC}')
+
+    if not delete_empty_rows(
         table=added_details_table.wrapper_object(),
         empty_marker=' Наименование детали'
-    )   
+    ):
+        # Если не была удалена ни одна строка, то фокус остается на ячейке "Количество"
+        # последней добавленной строки, кликая по центру мы этот фокус убираем
+        geely_window.click_input() 
 
     if not not_found_details and not invalid_details:
         print_log(msg='Все детали успешно добавлены!') 
@@ -285,7 +293,7 @@ def add_details(
             msg=f'Частичный успех. Добавлено {found_count} из {total_details}. '
                 f'Не найдены: {len(not_found_details)}. '
                 f'Ошибки: {len(invalid_details)}. '
-                f'Подробности сохранены в report.json',
+                f'Подробности сохранены в details_report.json',
             color=colors.YELLOW
         )
 

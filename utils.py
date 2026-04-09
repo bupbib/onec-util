@@ -6,7 +6,7 @@ import typer
 from typer import colors 
 from pywinauto import WindowSpecification, mouse
 from pywinauto.controls.uiawrapper import UIAWrapper
-from pywinauto.keyboard import send_keys
+import keyboard
 
 from enums import MyApp, DetailsTableColumns
 from user_docs import LEXICON
@@ -121,7 +121,9 @@ def perform_search_with_retry(
                 mouse.click(coords=(rect.left + rect.width() // 2, rect.top + 35))
 
             time.sleep(0.5)
-            send_keys('^f') 
+            # send_keys('^f') из pywinauto нестабилен в этом окне 1С — часто не срабатывает.
+            # keyboard.send('ctrl+f') работает на уровне глобального перехвата и надёжнее.
+            keyboard.send('ctrl+f') 
         elif search_type == 'detail':
             window.child_window(title='Найти...', control_type='Button').click_input() 
         else:

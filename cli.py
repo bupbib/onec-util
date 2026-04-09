@@ -269,7 +269,7 @@ def add_details(
 
     if not not_found_details and not invalid_details:
         print_log(msg='Все детали успешно добавлены!') 
-    if len(not_found_details) + len(invalid_details) == total_details:
+    elif len(not_found_details) + len(invalid_details) == total_details:
         print_log(
             msg='Ни одна деталь не была найдена. Проверьте корректность передаваемых деталей', 
             color=colors.YELLOW

@@ -38,3 +38,8 @@ class DetailsTableColumns(StrEnum):
     def __repr__(self) -> str:
         return f"'{self.value}'"
 
+
+class ReportAddDetails(StrEnum):
+    # Если вдруг поменяется имя файла тут или в роботе - обязательно синхронизировать!
+    DIR = r'C:\ROBOT_CLAIM'
+    FILENAME = 'details_report.json'

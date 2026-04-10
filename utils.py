@@ -123,6 +123,7 @@ def perform_search_with_retry(
             time.sleep(0.5)
             # send_keys('^f') и keyboard.send('ctrl+f') нестабильны в 1С.
             # pydirectinput — более низкоуровневая (работает со скан-кодами), поэтому надёжнее.
+            # Если начнёт подводить — есть запасные варианты (ctypes, interception).
             pydirectinput.keyDown('ctrl')
             pydirectinput.press('f')
             pydirectinput.keyUp('ctrl')

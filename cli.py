@@ -12,7 +12,7 @@ from pywinauto import Application, ElementNotFoundError, ElementAmbiguousError, 
 from pywinauto.keyboard import send_keys
 from pydantic import ValidationError
 
-from enums import DetailsTableColumns, OneCWebWMS, MyApp
+from enums import DetailsTableColumns, OneCWebWMS, MyApp, ReportAddDetails
 from utils import (
     delete_empty_rows, error_exit, print_log, 
     generate_docs, extract_details_row, perform_search_with_retry
@@ -286,14 +286,19 @@ def add_details(
         found_count = total_details - len(not_found_details) - len(invalid_details)
         report = {'not_found': not_found_details, 'invalid': invalid_details}
 
-        with open('details_report.json', 'w', encoding='utf-8') as file:
+        report_path = Path(ReportAddDetails.DIR) / ReportAddDetails.FILENAME
+
+        # Вообще папка создается роботом, но на всякий случай сюда тоже добавил, если папка есть - ничего не будет
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(report_path, 'w', encoding='utf-8') as file:
             json.dump(report, file, ensure_ascii=False, indent=4)
 
         print_log(
             msg=f'Частичный успех. Добавлено {found_count} из {total_details}. '
                 f'Не найдены: {len(not_found_details)}. '
                 f'Ошибки: {len(invalid_details)}. '
-                f'Подробности сохранены в details_report.json',
+                f'Подробности сохранены в {report_path}',
             color=colors.YELLOW
         )
 

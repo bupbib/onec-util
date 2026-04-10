@@ -171,7 +171,7 @@ def add_details(
     with open(file_path, encoding='utf-8') as file:
         try:
             data = json.load(file)
-            all_details = data.get('Детали')
+            all_details = data.get('payload', {}).get('Детали')
 
             if all_details is None: raise typer.BadParameter('В передаваемом json отсутствует обязательный ключ "Детали"')
         except json.JSONDecodeError as json_err:

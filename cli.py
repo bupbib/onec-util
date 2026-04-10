@@ -168,10 +168,12 @@ def add_details(
     """
     Добавить детали в рекламацию из JSON файла
     """  
-    data = []
     with open(file_path, encoding='utf-8') as file:
         try:
             data = json.load(file)
+            all_details = data.get('Детали')
+
+            if all_details is None: raise typer.BadParameter('В передаваемом json отсутствует обязательный ключ "Детали"')
         except json.JSONDecodeError as json_err:
             error_exit(
                 msg='Ошибка: файл не является валидным JSON',
@@ -180,7 +182,7 @@ def add_details(
     
     invalid_details = []
     not_found_details = []
-    total_details = len(data)
+    total_details = len(all_details)
     geely_window: WindowSpecification = ctx.obj 
 
     geely_window.set_focus()
@@ -194,7 +196,7 @@ def add_details(
     valid_count = 0
     need_open_tab = True 
 
-    for idx, detail_dict in enumerate(data, 1):
+    for idx, detail_dict in enumerate(all_details, 1):
         try:
             detail_item = DetailItem.model_validate(detail_dict)
         except ValidationError:

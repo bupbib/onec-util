@@ -147,7 +147,7 @@ def add_jobs(
     else:
         found_count = total_jobs - len(not_found_jobs)
         print_log(
-            msg=f'Частичный успех. Добавлено {found_count} из {total_jobs}. Ненайденные коды: {";".join(not_found_jobs)}',
+            msg = f"Частичный успех. Добавлено {found_count} из {total_jobs}. Ненайденные коды: {', '.join(f'\"{job}\"' for job in not_found_jobs)}",
             color=colors.YELLOW
         )
              

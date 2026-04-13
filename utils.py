@@ -114,11 +114,12 @@ def perform_search_with_retry(
             nomenclature_table = window['Отбор по модели и деталиTable'].wrapper_object()
             nomenclature_table.set_focus()
 
-            if nomenclature_table.children():
-                nomenclature_table.children()[0].click_input()
-            else:
-                rect = nomenclature_table.rectangle()
-                mouse.click(coords=(rect.left + rect.width() // 2, rect.top + 35))
+            # UPD 13.04 set_focus() справляется, видимо, проблема была только в keyboard и send_keys
+            # if nomenclature_table.children():
+            #     nomenclature_table.children()[0].click_input()
+            # else:
+            #     rect = nomenclature_table.rectangle()
+            #     mouse.click(coords=(rect.left + rect.width() // 2, rect.top + 35))
 
             time.sleep(0.5)
             # send_keys('^f') и keyboard.send('ctrl+f') нестабильны в 1С.

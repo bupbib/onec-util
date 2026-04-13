@@ -127,13 +127,26 @@ def add_jobs(
             else:
                 send_keys('{ESC 4}', pause=0.2)  # ESC 4 = закрыть все (и поиск, и вкладку)
         else:
-            need_open_tab = True 
             send_keys('^{ENTER}')
 
+            # UPD 13.04: Здесь тоже могут быть случаи, когда мы запустим поиск необходимого кода, 
+            # который, в целом, присутствует в номенклатуре, но отсутствует у конкретной машины.
+            # И тогда тут тоже, как и в add-details 1С генерирует порядка 80 пустых элементов.
             nomenclature_table = geely_window['Отбор по модели и деталиTable'].wrapper_object()
-            nomenclature_table.children()[0].click_input(double=True)  # клик по первой ячейке
+            code_job = nomenclature_table.children()[3]  # под индексом 3 будет ячейка с кодом работ, либо пустой элемент
 
-            logger.debug(f'Код работы {job} успешно найден в номенклатуре')
+            if code_job.window_text() == f'{job} Работа':
+                code_job.click_input(double=True)
+                logger.debug(f'Код работы {job} успешно найден в номенклатуре')
+                need_open_tab = True 
+            else:
+                not_found_jobs.append(job)
+                logger.debug(f'Код работы {job} не был найден в номенклатуре')
+
+                if idx < total_jobs:
+                    need_open_tab = False 
+                else:
+                    send_keys('{ESC}')             
     
     delete_empty_rows(
         table=geely_window['Дата:Table'].wrapper_object(),
@@ -307,7 +320,7 @@ if __name__ == '__main__':
     # Робот (Robin RPA) корректно показывает кириллицу только в кодировке cp866.
     # При тестировании в обычной консоли Windows эта кодировка даёт кракозябры.
     # Поэтому при тестировании закомментируйте строку ниже, а перед запуском в роботе — раскомментируйте.
-    sys.stdout.reconfigure(encoding='cp866', errors='replace')  # pyright: ignore[reportAttributeAccessIssue]
+    # sys.stdout.reconfigure(encoding='cp866', errors='replace')  # pyright: ignore[reportAttributeAccessIssue]
 
     log_file = Path(__file__).parent / 'app.log'
 

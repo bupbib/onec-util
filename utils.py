@@ -111,6 +111,7 @@ def perform_search_with_retry(
         if search_type == 'job':
             # set_focus() + клик по первой записи — стабильная комбинация для перевода фокуса.
             # По отдельности оба метода ненадёжны.
+            window.child_window(title='Отбор только по модели', control_type='CheckBox').click_input()
             nomenclature_table = window['Отбор по модели и деталиTable'].wrapper_object()
             nomenclature_table.set_focus()
 

@@ -99,7 +99,9 @@ def add_jobs(
     need_open_tab = True 
 
     for idx, job in enumerate(jobs, 1):
-        if need_open_tab: add_job_btn.click_input() 
+        if need_open_tab: 
+            add_job_btn.click_input() 
+            geely_window.child_window(title='Отбор только по модели', control_type='CheckBox').click_input()
 
         search_dialog_found = perform_search_with_retry(
             window=geely_window,
@@ -133,7 +135,7 @@ def add_jobs(
             # который, в целом, присутствует в номенклатуре, но отсутствует у конкретной машины.
             # И тогда тут тоже, как и в add-details 1С генерирует порядка 80 пустых элементов.
             nomenclature_table = geely_window['Отбор по модели и деталиTable'].wrapper_object()
-            code_job = nomenclature_table.children()[3]  # под индексом 3 будет ячейка с кодом работ, либо пустой элемент
+            code_job = nomenclature_table.children()[1]  # под индексом 1 будет ячейка с кодом работ, либо пустой элемент
 
             if code_job.window_text() == f'{job} Работа':
                 code_job.click_input(double=True)

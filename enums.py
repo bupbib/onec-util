@@ -3,8 +3,9 @@ from enum import StrEnum
 
 class OneCWebWMS(StrEnum):
     # Приложение/окно
-    APP_NAME = '1С WEB VMS (Geely)'
-    MAIN_WINDOW_TITLE = 'WEB VMS - ООО «Бизнес Кар М» - Москва'
+    APP_NAME = '1С WEB VMS'
+    GMR_WINDOW_TITLE = 'WEB VMS - ООО «Бизнес Кар М» - Москва'
+    SMR_WINDOW_TITLE = 'SMR VMS - ООО «Бизнес Кар М» - Москва'
 
     # Вкладки
     CLAIM_CREATE_TAB_TITLE = 'Рекламация VMS (создание)'
@@ -43,3 +44,8 @@ class ReportAddDetails(StrEnum):
     # Если вдруг поменяется имя файла тут или в роботе - обязательно синхронизировать!
     DIR = r'C:\ROBOT_CLAIM'
     FILENAME = 'details_report.json'
+
+
+class ClaimWindow(StrEnum):
+    GMR = 'GMR'
+    SMR = 'SMR'

@@ -8,11 +8,11 @@ from pathlib import Path
 
 import typer 
 from typer import colors
-from pywinauto import Application, ElementNotFoundError, ElementAmbiguousError, WindowSpecification, mouse 
+from pywinauto import Application, ElementNotFoundError, ElementAmbiguousError, WindowSpecification 
 from pywinauto.keyboard import send_keys
 from pydantic import ValidationError
 
-from enums import DetailsTableColumns, OneCWebWMS, MyApp, ReportAddDetails
+from enums import DetailsTableColumns, OneCWebWMS, MyApp, ReportAddDetails, ClaimWindow
 from utils import (
     delete_empty_rows, error_exit, print_log, 
     generate_docs, extract_details_row, perform_search_with_retry
@@ -36,7 +36,10 @@ app = typer.Typer(
 
 
 @app.callback()
-def main(ctx: typer.Context):
+def main(
+    ctx: typer.Context,
+    window: ClaimWindow = typer.Option(..., '--window', '-w', help='Выбор клиентского приложения')
+):
     f"""
     Callback-функция, выполняемая перед каждой командой.
 
@@ -49,10 +52,15 @@ def main(ctx: typer.Context):
         error_exit(msg='Ошибка: Утилита работает только на Windows')
     
     try:
-        geely_app = Application(backend='uia').connect(title=OneCWebWMS.MAIN_WINDOW_TITLE)
+        window_title = (
+            OneCWebWMS.GMR_WINDOW_TITLE 
+            if window == ClaimWindow.GMR 
+            else OneCWebWMS.SMR_WINDOW_TITLE
+        ) 
+        geely_app = Application(backend='uia').connect(title=window_title)
         # top_window() может вернуть не главное окно (всплывающие окна имеют более высокий Z-order),
         # поэтому используем поиск по title
-        geely_window: WindowSpecification = geely_app.window(title=OneCWebWMS.MAIN_WINDOW_TITLE)
+        geely_window: WindowSpecification = geely_app.window(title=window_title)
 
         claim_tab = geely_window.child_window(title_re=OneCWebWMS.CLAIM_CREATE_TAB_PATTERN, control_type='Pane')
         
@@ -62,7 +70,7 @@ def main(ctx: typer.Context):
             )
 
         ctx.obj = geely_window
-        logger.info(f'Успешное подключение к {OneCWebWMS.APP_NAME}')
+        logger.info(f'Успешное подключение к {window_title}')
     except ElementNotFoundError as no_app_err:
         error_exit(
             msg=f'Ошибка: Клиентское приложение {OneCWebWMS.APP_NAME} не запущено. Запустите приложение и повторите попытку',
@@ -322,7 +330,7 @@ if __name__ == '__main__':
     # Робот (Robin RPA) корректно показывает кириллицу только в кодировке cp866.
     # При тестировании в обычной консоли Windows эта кодировка даёт кракозябры.
     # Поэтому при тестировании закомментируйте строку ниже, а перед запуском в роботе — раскомментируйте.
-    sys.stdout.reconfigure(encoding='cp866', errors='replace')  # pyright: ignore[reportAttributeAccessIssue]
+    # sys.stdout.reconfigure(encoding='cp866', errors='replace')  # pyright: ignore[reportAttributeAccessIssue]
 
     log_file = Path(__file__).parent / 'app.log'
 

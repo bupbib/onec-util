@@ -330,7 +330,7 @@ if __name__ == '__main__':
     # Робот (Robin RPA) корректно показывает кириллицу только в кодировке cp866.
     # При тестировании в обычной консоли Windows эта кодировка даёт кракозябры.
     # Поэтому при тестировании закомментируйте строку ниже, а перед запуском в роботе — раскомментируйте.
-    # sys.stdout.reconfigure(encoding='cp866', errors='replace')  # pyright: ignore[reportAttributeAccessIssue]
+    sys.stdout.reconfigure(encoding='cp866', errors='replace')  # pyright: ignore[reportAttributeAccessIssue]
 
     log_file = Path(__file__).parent / 'app.log'
 
